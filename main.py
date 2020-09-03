@@ -1,47 +1,49 @@
 import string
+from pprint import pprint
 
 
-def interpret(s):
-    s = s.strip()
-    if s.startswith("{"):
-        # todo: handle empty records
-        # todo: find ending }
-        record = interpret_record(s[1:])
+parens = {
+    "(": ")",
+    "{": "}"
+}
 
 
-def interpret_record(s):
-    record = dict()
+def partition(s, stop_on=None):
+    result = []
     i = 0
+    buffer = ""
     while i < len(s):
-        s = s.strip()
-        name = ""
-        while s[i] in string.ascii_lowercase:
-            name += s[i]
+        cc = s[i]
+        if cc == stop_on:
+            if buffer:
+                result.append(buffer)
+            return result, i
+        elif cc in parens:
+            # empty previous buffer if non-empty
+            if buffer:
+                result.append(buffer)
+                buffer = ""
+
+            # recursion here
+            a_partition, i_advance = partition(s[i+1:], stop_on=parens[cc])
+            i += i_advance + 2
+            result.append(a_partition)
+        elif cc == ",":
+            if buffer:
+                result.append(buffer)
+                buffer = ""
+            i += 1
+        else:
+            buffer += cc
             i += 1
 
-        while s[i] == " ":
-            i += 1
+    if buffer:
+        result.append(buffer)
 
-        assert s[i] == "="
-
-        while s[i] == " ":
-            i += 1
+    return result, i
 
 
-
-        record[name] = interpret(s[i:])
-
-        # # find out which function to call
-        # if s[i] == "{":
-        #     record[name] = interpret_record(s[i:])
-        # elif s[i] in string.digits:
-        #     end = min(s[i:].find(","), s[i:].find("}"))
-        #     record[name] = int(s[i:end])  # fixme: maybe +1 error
-        # elif s[i]
-
-
-
-    # {a=5,b={c=3, d=4},e=7}
-
-
-interpret("((x->(y->+(* x x)y))2)3")
+# {a=5,b={c=3, d=4},e=7}
+test = "{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3"
+pprint(test)
+pprint(partition(test)[0])
