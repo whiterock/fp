@@ -101,18 +101,19 @@ def evaluate(e, env=environment):
             variable_name = e[0][0:e[0].index('->')]
             body = e[1]
 
-            if len(e) == 3:
+            if len(e) >= 3:
+                assert len(e) == 3
                 called_with = e[2]
                 new_body = recursive_replace(body, variable_name, called_with)
                 return evaluate(new_body, env)
 
             return Lamb(variable_name, body, env)
-        elif "{" in e[0]:
+        elif e[0].startswith('{'):
             pass  # unimplemented
         else:
             # function call
             name = e[0]
-            if name not in env.keys():
+            if name not in env:
                 print("Error: unrecognised token " + name)
                 exit()
             if name != "cond":
