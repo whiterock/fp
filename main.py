@@ -14,13 +14,13 @@ def partition_rec(s, stop_on=None):
     while i < len(s):
         cc = s[i]
         if cc == stop_on:
-            if buffer:
-                result.append(buffer)
+            if stripped_buffer := buffer.strip():
+                result.append(stripped_buffer)
             return result, i + 1
         elif cc in parens:
             # empty previous buffer if non-empty
-            if buffer:
-                result.append(buffer)
+            if stripped_buffer := buffer.strip():
+                result.append(stripped_buffer)
                 buffer = ""
 
             # recursion here
@@ -28,21 +28,22 @@ def partition_rec(s, stop_on=None):
             i += i_advance + 1
             result.append(a_partition)
         elif cc == ",":
-            if buffer:
-                result.append(buffer)
+            if stripped_buffer := buffer.strip():
+                result.append(stripped_buffer)
                 buffer = ""
             i += 1
         else:
             buffer += cc
             i += 1
 
-    if buffer:
-        result.append(buffer)
+    if stripped_buffer := buffer.strip():
+        result.append(stripped_buffer)
 
     return result, i
 
 
 def partition(s):
+    s = s.replace('\n', ' ').replace('\t', ' ')
     part, length = partition_rec(s)
     assert length == len(s)
     return part
@@ -66,7 +67,7 @@ environment = {
 }
 
 
-class Lamb():
+class Lamb:
     def __init__(self, variable_name, body, env):
         self.variable_name = variable_name
         self.body = body
@@ -130,6 +131,7 @@ def evaluate(e, env=environment):
 
 if __name__ == "__main__":
     def debug(s):
+        print(s)
         part = partition(s)
         print(part)
         split = split_my_thing(part)
@@ -147,4 +149,12 @@ if __name__ == "__main__":
 
     print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)3")[0])))
 
-    debug("(x->(y->(plus(mult x 2)(mult y y)))1)4")
+    debug("""   
+    (x->
+        (y->
+            (
+                plus(mult x 2)(mult y y)
+            )
+        )1
+    )4
+    """)
