@@ -108,26 +108,33 @@ def evaluate(e, env=environment):
                 return evaluate(new_body, env)
 
             return Lamb(variable_name, body, env)
-        elif e[0].startswith('{'):
+        elif '=' in e[0]:
+            # TODO by @whiterock: Produce dicts in partition...
             pass  # unimplemented
         else:
             # function call
             name = e[0]
             if name not in env:
-                print("Error: unrecognised token " + name)
-                exit()
+                raise SyntaxError("Error: unrecognised token " + name)
             if name != "cond":
                 return env[name](evaluate(e[1]), evaluate(e[2]))
             else:
                 return env[name](e[1], e[2], e[3])
     elif isinstance(e[0], Lamb):
         # call lambda
-        try:
+        # try:
+        #     called_with = e[1]
+        #     new_body = recursive_replace(e[0].body, e[0].variable_name, called_with)
+        #     return evaluate(new_body, env)
+        # except:
+        #     pass
+        if len(e) >= 2:
+            assert len(e) == 2
             called_with = e[1]
             new_body = recursive_replace(e[0].body, e[0].variable_name, called_with)
             return evaluate(new_body, env)
-        except:
-            pass
+        else:
+            return e[0]
 
 
 if __name__ == "__main__":
@@ -150,6 +157,7 @@ if __name__ == "__main__":
 
     print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)3")[0])))
 
+    #debug("{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3")
     debug("""   
     (x->
         (y->
