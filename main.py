@@ -129,6 +129,14 @@ def evaluate(e, env=environment):
 
 
 if __name__ == "__main__":
+    def debug(s):
+        part = partition(s)
+        print(part)
+        split = split_my_thing(part)
+        print(split)
+        result = evaluate(split)
+        print(result)
+
     # if len(sys.argv) != 2:
     # 	exit()
     # p = sys.argv[1]
@@ -138,4 +146,5 @@ if __name__ == "__main__":
     # print(partition("((x->(y->(plus(mult x x)y))2)3"))
 
     print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)3")[0])))
-    print(evaluate(split_my_thing(partition("(x->(y->(plus(mult x 2)(mult y y)))1)4)"))))
+
+    debug("(x->(y->(plus(mult x 2)(mult y y)))1)4")
