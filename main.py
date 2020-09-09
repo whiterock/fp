@@ -125,19 +125,27 @@ def evaluate(e, env=environment):
             # function call
             name = e[0]
             if name not in env:
-                raise SyntaxError("Error: unrecognised token " + name)
-            if name != "cond":
-                return env[name](evaluate(e[1]), evaluate(e[2]))
+                raise SyntaxError("Error: unrecognised token " + name + ", env=" + str(env))
+            if name in environment:
+                if name != "cond":
+                    return env[name](evaluate(e[1], env=env), evaluate(e[2], env=env))
+                else:
+                    return env[name](e[1], e[2], e[3])
+            # if we are dealing with a record item
             else:
-                return env[name](e[1], e[2], e[3])
+                return env[name]
+    elif isinstance(e[0], dict):
+        if len(e) == 3:
+            # fixme: no argument? where can records arise?
+            # fixme: multiple arguments
+            # {.....}()arg
+            func = evaluate(e[1], {**env, **e[0]})
+            called_with = e[2]
+            new_body = recursive_replace(func.body, func.variable_name, called_with)
+            print(e)
+            return evaluate(new_body, {**env, **e[0]})
     elif isinstance(e[0], Lamb):
         # call lambda
-        # try:
-        #     called_with = e[1]
-        #     new_body = recursive_replace(e[0].body, e[0].variable_name, called_with)
-        #     return evaluate(new_body, env)
-        # except:
-        #     pass
         if len(e) >= 2:
             assert len(e) == 2
             called_with = e[1]
@@ -165,10 +173,9 @@ if __name__ == "__main__":
     # pprint(partition(test)[0])
     # print(partition("((x->(y->(plus(mult x x)y))2)3"))
 
-    print(partition("{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3"))
-    print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)3")[0])))
+    print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)")[0])))
 
-    debug("{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3")
+    debug("{a=5,b={c=3, d=4},e=7}((x->(y->(plus(mult e x)y)))2)3")
     debug("""   
     (x->
         (y->
