@@ -115,15 +115,12 @@ def evaluate(e, env=environment):
                 if isinstance(e[i], str):
                     var_name, value = e[i].split("=")
                     if not value:
-                        record[var_name] = evaluate(e[i+1], env=env)
+                        record[var_name] = evaluate(e[i+1], env={**env, **record})
                     else:
-                        record[var_name] = evaluate(value, env=env)
+                        record[var_name] = evaluate(value, env={**env, **record})
 
-                    # is this too late for recursion??
-                    env.update(record)
-
-            pprint(env)
-            return env
+            pprint(record)
+            return record
         else:
             # function call
             name = e[0]
