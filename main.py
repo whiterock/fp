@@ -139,6 +139,7 @@ def evaluate(e, env=environment):
             # fixme: no argument? where can records arise?
             # fixme: multiple arguments
             # {.....}()arg
+            # variables defined in the record are not available to use in `arg`. bug or feature?
             func = evaluate(e[1], {**env, **e[0]})
             called_with = e[2]
             new_body = recursive_replace(func.body, func.variable_name, called_with)
@@ -175,7 +176,7 @@ if __name__ == "__main__":
 
     print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)")[0])))
 
-    debug("{a=5,b={c=3, d=4},e=7}((x->(y->(plus(mult e x)y)))2)3")
+    debug("{a=5,b={c=3, d=4},e=7}((x->(y->(plus(mult e x)y)))a)3")
     debug("""   
     (x->
         (y->
