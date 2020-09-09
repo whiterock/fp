@@ -109,8 +109,21 @@ def evaluate(e, env=environment):
 
             return Lamb(variable_name, body, env)
         elif '=' in e[0]:
-            # TODO by @whiterock: Produce dicts in partition...
-            pass  # unimplemented
+            # we are in a record
+            record = dict()
+            for i in range(len(e)):
+                if isinstance(e[i], str):
+                    var_name, value = e[i].split("=")
+                    if not value:
+                        record[var_name] = evaluate(e[i+1], env=env)
+                    else:
+                        record[var_name] = evaluate(value, env=env)
+
+                    # is this too late for recursion??
+                    env.update(record)
+
+            pprint(env)
+            return env
         else:
             # function call
             name = e[0]
@@ -155,9 +168,10 @@ if __name__ == "__main__":
     # pprint(partition(test)[0])
     # print(partition("((x->(y->(plus(mult x x)y))2)3"))
 
+    print(partition("{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3"))
     print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)3")[0])))
 
-    #debug("{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3")
+    debug("{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3")
     debug("""   
     (x->
         (y->
