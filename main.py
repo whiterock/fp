@@ -73,6 +73,9 @@ class Lamb:
         self.body = body
         self.env = env
 
+    def __repr__(self):
+        return self.__str__()
+
     def __str__(self):
         return "Lambda: " + self.variable_name + "->" + str(self.body)
 
@@ -97,7 +100,31 @@ def evaluate(e, env=environment):
             return int(e[0])
         except:
             pass
-        if "->" in e[0]:
+        if '=' in e[0]:
+            # we are in a record
+            record = dict()
+            i = 0
+            while i < len(e):
+                if isinstance(e[i], str):
+                    var_name, value = e[i].split("=")
+                    if '->' not in value:
+                        if not value:
+                            record[var_name] = evaluate(e[i+1], env={**env, **record})
+                        else:
+                            record[var_name] = evaluate(value, env={**env, **record})
+                        i += 1
+                    else:
+                        variable_name = value[0:value.index('->')]
+                        body = e[i+1]
+                        # TODO: Handle when function is called immediately
+                        record[var_name] = Lamb(variable_name, body, {**env, **record})
+                        i += 2
+                else:
+                    i += 1
+
+            pprint(record)
+            return record
+        elif "->" in e[0]:
             variable_name = e[0][0:e[0].index('->')]
             body = e[1]
 
@@ -108,19 +135,6 @@ def evaluate(e, env=environment):
                 return evaluate(new_body, env)
 
             return Lamb(variable_name, body, env)
-        elif '=' in e[0]:
-            # we are in a record
-            record = dict()
-            for i in range(len(e)):
-                if isinstance(e[i], str):
-                    var_name, value = e[i].split("=")
-                    if not value:
-                        record[var_name] = evaluate(e[i+1], env={**env, **record})
-                    else:
-                        record[var_name] = evaluate(value, env={**env, **record})
-
-            pprint(record)
-            return record
         else:
             # function call
             name = e[0]
@@ -145,9 +159,12 @@ def evaluate(e, env=environment):
             new_body = recursive_replace(func.body, func.variable_name, called_with)
             print(e)
             return evaluate(new_body, {**env, **e[0]})
+        else:
+            SystemError("Not supposed to be called like that" + repr(e))
     elif isinstance(e[0], Lamb):
         # call lambda
         if len(e) >= 2:
+            print(list(map(str, e)))
             assert len(e) == 2
             called_with = e[1]
             new_body = recursive_replace(e[0].body, e[0].variable_name, called_with)
@@ -158,13 +175,13 @@ def evaluate(e, env=environment):
 
 if __name__ == "__main__":
     def debug(s):
-        print(s)
+        print("Input str: ", s)
         part = partition(s)
-        print(part)
+        print("Partition: ", part)
         split = split_my_thing(part)
-        print(split)
+        print("Split str: ", split)
         result = evaluate(split)
-        print(result)
+        print("F. result: ", result)
 
     # if len(sys.argv) != 2:
     # 	exit()
@@ -174,9 +191,12 @@ if __name__ == "__main__":
     # pprint(partition(test)[0])
     # print(partition("((x->(y->(plus(mult x x)y))2)3"))
 
-    print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)")[0])))
+    # print(evaluate(split_my_thing(partition("((x->(y->(plus(mult x x)y))2)")[0])))
 
     debug("{a=5,b={c=3, d=4},e=7}((x->(y->(plus(mult e x)y)))a)3")
+    print()
+    debug("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 4")
+
     debug("""   
     (x->
         (y->
