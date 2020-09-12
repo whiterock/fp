@@ -1,12 +1,5 @@
-import string, sys, re, copy
+import string, sys, copy
 from pprint import pprint
-
-
-def get_next_non_whitespace_char_index(e, i):
-    while e[i] in string.whitespace:
-        i += 1
-    return i
-
 
 def next_closing_parenthesis(e, i):
     level = 0
@@ -23,21 +16,25 @@ def next_closing_parenthesis(e, i):
     # should not be reached
     raise SyntaxError("Unbalanced parenthesis at", i)
 
-
 def rescue_lambdas(s):
-    k = 0
-    for i in [m.start() + 2 for m in re.finditer('->', s)]:
-        if s[get_next_non_whitespace_char_index(s, i + k)] != '(':
-            j = next_closing_parenthesis(s, i + k)
-            s = s[:i + k] + '(' + s[i + k:j] + ')' + s[j:]
-            k += 1
-    return s
+    i = -1
+    try:
+        while True:
+            i = s.index('->', i+1)+2
+            if s[i + (1 if s[i] == ' ' else 0)] != '(':
+                j = next_closing_parenthesis(s, i)
+                s = s[:i] + '(' + s[i:j] + ')' + s[j:]
+    except ValueError: # .index returns ValueError: substring not found
+        return s
+
 
 
 def parse(s):
-    # fixme: herein lies an error
+    s = ' '.join(s.split())
+    s = s.replace("{}", "()").replace("{ }", "()")
     if '=' in s:
-        s = s.replace(',', ',)').replace('=', '=(').replace('}', ')}')
+        s = s.replace(',', ')').replace('=', '=(').replace('}', ')}').replace(" =", "=")
+    s = s.replace("(())", "()")
     s = rescue_lambdas(s)
     if s[0] != '(' or s[-1] != ')':
         s = '(' + s + ')'
@@ -51,13 +48,9 @@ def parse(s):
         replace(')', ' ) '). \
         replace('{', ' { '). \
         replace('}', ' } '). \
-        replace(',', ' '). \
         replace('=', '= '). \
-        replace('\n', ' '). \
-        replace('\t', ' ').\
         split()
-
-    print(ast)
+    #print(ast)
     return parse_tokens(ast)
 
 
@@ -87,7 +80,7 @@ environment = {
     'minus': lambda a, b: a - b,
     'mult': lambda a, b: a * b,
     'div': lambda a, b: a / b,
-    'cond': lambda a, b, c: b if a else c  # q: not used (because lazy eval?)
+    'cond': "nani?" #a: value is never used, key is
 }
 
 
@@ -140,7 +133,7 @@ def evaluate(e, env=environment):
         return evaluate([evaluate(new_body, env)] + e[2:], env)
     if isinstance(e[0], str):
         if '->' in e[0]:
-            variable_name = evaluate(e[0])
+            variable_name = evaluate(e[0], env)
             body = e[1]
             return Lamb(variable_name, body, env)
         elif e[0] in environment:
