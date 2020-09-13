@@ -69,13 +69,13 @@ def aware_split(s, on=string.whitespace):
     return items
 
 
-def interpret(s, env, level=0):
+def parse(s, env, level=0):
     print("#"*(level*2+2), s)
     if s.startswith("<"):
         var_name, rest = s.split(">", 1)
 
         # Parse body
-        body = interpret(rest, env, level=level + 1)
+        body = parse(rest, env, level=level + 1)
 
         var_name = var_name[1:].strip()
         end = next_closing_parenthesis(s, len(var_name)+1, open="(", close=")") + 1
@@ -87,15 +87,16 @@ def interpret(s, env, level=0):
             end_bracket = next_closing_parenthesis(s, end, open="[", close="]") + 1
             # Remove [ and ] and then strip
             caller_str = s[end:end_bracket].strip()[1:-1].strip()
-            caller = interpret(caller_str, env, level=level+1)
+            caller = parse(caller_str, env, level=level + 1)
 
         return Lambda(var_name, body, caller)
     elif s.startswith("("):
         n = next_closing_parenthesis(s, 0, open="(", close=")")
         fun, *args = aware_split(s[1:n])  # maybe this changes envs in the process?
         # print(args)
-        return Func(fun, *[interpret(arg, env, level=level+1) for arg in args])
+        return Func(fun, *[parse(arg, env, level=level + 1) for arg in args])
     elif s.startswith("{"):
+        # FIXME: Check if called later in a (...) as in {...}()
         n = next_closing_parenthesis(s, 0, open="{", close="}")
         items = [*map(strip, aware_split(s[1:n], ","))]
         # print(items)
@@ -103,7 +104,7 @@ def interpret(s, env, level=0):
         for item in items:
             ident, body = [ms.strip() for ms in item.split("=", 1)]
             # this could cause trouble with recursion
-            env[ident] = interpret(body, env, level=level+1)
+            env[ident] = parse(body, env, level=level + 1)
         return env
     elif s[0] in string.digits:
         assert all(map(lambda d: d in string.digits, s))
@@ -118,4 +119,4 @@ def interpret(s, env, level=0):
     # print("+"*30 + "Unreachable" + "+"*30)
 
 
-pprint(interpret("<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x)[3]", env={}))
+pprint(parse("<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x)[3]", env={}))
