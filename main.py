@@ -1,5 +1,6 @@
 import string, sys, copy
-from pprint import pprint
+from pprint import pprint, pformat
+
 
 def next_closing_parenthesis(e, i):
     level = 0
@@ -16,6 +17,7 @@ def next_closing_parenthesis(e, i):
     # should not be reached
     raise SyntaxError("Unbalanced parenthesis at", i)
 
+
 def rescue_lambdas(s):
     i = -1
     try:
@@ -24,9 +26,8 @@ def rescue_lambdas(s):
             if s[i + (1 if s[i] == ' ' else 0)] != '(':
                 j = next_closing_parenthesis(s, i)
                 s = s[:i] + '(' + s[i:j] + ')' + s[j:]
-    except ValueError: # .index returns ValueError: substring not found
+    except ValueError:  # .index returns ValueError: substring not found
         return s
-
 
 
 def parse(s):
@@ -106,8 +107,14 @@ def recursive_replace(l, a, b):
     return l
 
 
+exnum = 0
+
+
 def evaluate(e, env=environment):
-    print(e)
+    global exnum
+    print(f"{exnum:04d}: ")
+    print(pformat(e, width=160))
+    exnum += 1
     if e == []:
         return e
     if isinstance(e, list) and len(e) == 1:
@@ -170,14 +177,16 @@ if __name__ == "__main__":
     # print(evaluate(parse("((x->(y->plus(mult x x)y))2)3")))
     # print(evaluate(parse("{a=x->y->plus(mult x x)y, b=a 2, c=b 3}")))
 
-    assert(evaluate(parse("(x->y->plus(mult x x)y) 2 3")) == 7)
-    assert(evaluate(parse("((x->(y->plus(mult x x)y))2)3")) == 7)
-    assert(evaluate(parse("minus ((y->plus(mult 2 2)y)5)7")) == 2)
-    assert(evaluate(parse("{a=x->y->plus(mult x x)y, b=a 2, c=b 3}minus(b 5)c")) == 2)
-    assert(evaluate(parse("cond 14 2 3")) == 2)
-    assert(evaluate(parse("cond 0 2 3")) == 3)
-    assert(evaluate(parse("cond {} 2 3")) == 3)
-    assert evaluate(parse("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 10")) == 3628800
+    test = False
+    if test:
+        assert(evaluate(parse("(x->y->plus(mult x x)y) 2 3")) == 7)
+        assert(evaluate(parse("((x->(y->plus(mult x x)y))2)3")) == 7)
+        assert(evaluate(parse("minus ((y->plus(mult 2 2)y)5)7")) == 2)
+        assert(evaluate(parse("{a=x->y->plus(mult x x)y, b=a 2, c=b 3}minus(b 5)c")) == 2)
+        assert(evaluate(parse("cond 14 2 3")) == 2)
+        assert(evaluate(parse("cond 0 2 3")) == 3)
+        assert(evaluate(parse("cond {} 2 3")) == 3)
+        assert evaluate(parse("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 10")) == 3628800
 
     print(evaluate(parse("""{
         append= x->y->cond x {head=x head, tail=append(x tail)y} y,
