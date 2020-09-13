@@ -71,7 +71,7 @@ def aware_split(s, on=string.whitespace):
 
 def interpret(s, env, level=0):
     print("#"*(level*2+2), s)
-    if s[0] == "<":
+    if s.startswith("<"):
         var_name, rest = s.split(">", 1)
 
         # Parse body
@@ -90,16 +90,16 @@ def interpret(s, env, level=0):
             caller = interpret(caller_str, env, level=level+1)
 
         return Lambda(var_name, body, caller)
-    elif s[0] == "(":
+    elif s.startswith("("):
         n = next_closing_parenthesis(s, 0, open="(", close=")")
         fun, *args = aware_split(s[1:n])  # maybe this changes envs in the process?
-        print(args)
+        # print(args)
         return Func(fun, *[interpret(arg, env, level=level+1) for arg in args])
-    elif s[0] == "{":
+    elif s.startswith("{"):
         n = next_closing_parenthesis(s, 0, open="{", close="}")
         items = [*map(strip, aware_split(s[1:n], ","))]
-        print(items)
-        local_env = dict()
+        # print(items)
+        # local_env = dict()
         for item in items:
             ident, body = [ms.strip() for ms in item.split("=", 1)]
             # this could cause trouble with recursion
@@ -118,4 +118,4 @@ def interpret(s, env, level=0):
     # print("+"*30 + "Unreachable" + "+"*30)
 
 
-pprint(interpret("<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x)   [3]", env={}))
+pprint(interpret("<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x)[3]", env={}))
