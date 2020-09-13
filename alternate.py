@@ -1,4 +1,5 @@
 import string
+from copy import deepcopy
 from pprint import pprint
 
 
@@ -100,11 +101,15 @@ def parse(s, env, level=0):
         n = next_closing_parenthesis(s, 0, open="{", close="}")
         items = [*map(strip, aware_split(s[1:n], ","))]
         # print(items)
-        # local_env = dict()
+        
+        # q: is this the right way to go about this?
+        new_env = deepcopy(env)
         for item in items:
             ident, body = [ms.strip() for ms in item.split("=", 1)]
-            # this could cause trouble with recursion
-            env[ident] = parse(body, env, level=level + 1)
+            # q: this could cause trouble with recursion ?
+            # a: as I see it now it should be fine as new_env is passed by ref (i think)
+            #    so when we evaluate later we should be in the correct "state"
+            new_env[ident] = parse(body, new_env, level=level + 1)
         return env
     elif s[0] in string.digits:
         assert all(map(lambda d: d in string.digits, s))
