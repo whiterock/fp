@@ -7,16 +7,12 @@ strip = lambda s: s.strip()
 
 
 class Lambda(object):
-    def __init__(self, var_name, ast, caller=None):
+    def __init__(self, var_name, ast):
         self.var_name = var_name
         self.ast = ast
-        self.caller = caller
 
     def __repr__(self):
-        if self.caller:
-            return f"lambda<{self.var_name}>({self.ast!r})[{self.caller!r}]"
-        else:
-            return f"lambda<{self.var_name}>({self.ast!r})"
+        return f"lambda<{self.var_name!r}>({self.ast!r})"
 
 
 class Var(object):
@@ -24,16 +20,24 @@ class Var(object):
         self.name = name
 
     def __repr__(self):
-        return f"var({self.name})"
+        return f"var({self.name} at 0x{id(self):08x})"
 
 
-class Func(object):
-    def __init__(self, name, *args):
-        self.name = name
+class Call(object):
+    def __init__(self, callee, *args):
+        self.callee = callee
         self.args = args
 
     def __repr__(self):
-        return f"func({self.name}, {', '.join(map(repr, self.args))})"
+        return f"call({self.callee}, {', '.join(map(repr, self.args))})"
+
+
+class BuiltInOp(object):
+    def __init__(self, op):
+        self.op = op
+
+    def __repr__(self):
+        return f"op({self.op})"
 
 
 def next_closing_parenthesis(s, i, open, close):
@@ -70,38 +74,45 @@ def aware_split(s, on=string.whitespace):
     return items
 
 
-def parse(s, env, level=0):
+def parse(s, env, vars, level=0):
     print("#"*(level*2+2), s)
     if s.startswith("<"):
         var_name, rest = s.split(">", 1)
-
-        # Parse body
-        body = parse(rest, env, level=level + 1)
+        # end = next_closing_parenthesis(s, len(var_name) + 1, open="(", close=")") + 1
 
         var_name = var_name[1:].strip()
-        end = next_closing_parenthesis(s, len(var_name)+1, open="(", close=")") + 1
+        var_obj = Var(var_name)
+        vars[var_name] = var_obj
+
+        # Parse body
+        body = parse(rest, env, vars=vars, level=level + 1)
 
         # Parse potential caller
-        call_str_rest = s[end:]
-        caller = None
-        if call_str_rest.lstrip().startswith("["):
-            end_bracket = next_closing_parenthesis(s, end, open="[", close="]") + 1
-            # Remove [ and ] and then strip
-            caller_str = s[end:end_bracket].strip()[1:-1].strip()
-            caller = parse(caller_str, env, level=level + 1)
+        # call_str_rest = s[end:]
+        # caller = None
+        # if call_str_rest.lstrip().startswith("["):
+        #     end_bracket = next_closing_parenthesis(s, end, open="[", close="]") + 1
+        #     # Remove [ and ] and then strip
+        #     caller_str = s[end:end_bracket].strip()[1:-1].strip()
+        #     caller = parse(caller_str, env, vars=vars, level=level + 1)
 
-        return Lambda(var_name, body, caller)
+        return Lambda(var_obj, body)
     elif s.startswith("("):
         n = next_closing_parenthesis(s, 0, open="(", close=")")
-        fun, *args = aware_split(s[1:n])  # maybe this changes envs in the process?
-        # print(args)
-        return Func(fun, *[parse(arg, env, level=level + 1) for arg in args])
+        first, *args = aware_split(s[1:n])  # maybe this changes envs in the process?
+        if args:
+            callee = parse(first, env, vars=vars, level=level + 1)
+            params = [parse(arg, env, vars=vars, level=level + 1) for arg in args]
+            return Call(callee, *params)
+        else:
+            return parse(first, env, vars=vars, level=level + 1)
+        # return Func(fun, *[parse(arg, env, vars=vars, level=level + 1) for arg in args])
     elif s.startswith("{"):
         # FIXME: Check if called later in a (...) as in {...}()
         n = next_closing_parenthesis(s, 0, open="{", close="}")
         items = [*map(strip, aware_split(s[1:n], ","))]
         # print(items)
-        
+
         # q: is this the right way to go about this?
         new_env = deepcopy(env)
         for item in items:
@@ -109,19 +120,26 @@ def parse(s, env, level=0):
             # q: this could cause trouble with recursion ?
             # a: as I see it now it should be fine as new_env is passed by ref (i think)
             #    so when we evaluate later we should be in the correct "state"
-            new_env[ident] = parse(body, new_env, level=level + 1)
-        return env
+            new_env[ident] = parse(body, new_env, vars=vars, level=level + 1)
+        return new_env
     elif s[0] in string.digits:
         assert all(map(lambda d: d in string.digits, s))
         num = int(s)
         return num
     elif s[0] in string.ascii_lowercase:
         assert s.islower()
-        return Var(s)
+        if s in vars:
+            return vars[s]
+        else:
+            return NameError(f"var({s}) has not been passed.")
+    elif s in "*/+-?":
+        return BuiltInOp(s)
     else:
         print("UNHANDLED:", s[0])
 
     # print("+"*30 + "Unreachable" + "+"*30)
 
 
-pprint(parse("<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x)[3]", env={}))
+# "<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x)[3]"
+pprint(parse("(<x>(* (? {x = 5, b = <y>(+ 7 y)} 0 1) x) 3)", env={}, vars={}))
+pprint(parse("(<x>(<y>(* x y)) 3 2)", env={}, vars={}))
