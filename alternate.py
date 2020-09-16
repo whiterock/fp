@@ -79,9 +79,11 @@ class Call(object):
             new_env = deepcopy(env)  # todo: potential error?
             if not new_env:
                 new_env = Env()
-            new_env.update(self.callee.eval(call_stack, env=env, level=level + 1))
+
+            print("=" * (level * 2 + 2), "Let", self.args[0], "in", self.callee)
+            new_env.update(self.callee.eval(None, env=env, level=level + 1))
+            # print(type(new_env))
             assert len(self.args) == 1  # q: is this right?
-            print("=" * (level * 2 + 2), "Let", self.args[0], "in", new_env)
             return self.args[0].eval(call_stack, env=new_env, level=level + 1)
         elif isinstance(self.callee, Ident):
             if not call_stack:
@@ -96,6 +98,7 @@ class Call(object):
 class Env(dict):
     def eval(self, call_stack=None, env=None, level=0):
         for key, item in self.items():
+            print("=" * (level * 2 + 2), f"Setting key {key} with {item} in record")
             self[key] = item.eval(None, env=self, level=level + 1)
 
         return self
@@ -113,7 +116,13 @@ class BuiltInOp(object):
         if self.op == "*":
             return reduce(lambda x, y: x*y, map(lambda c: c.eval(None, env, level=level + 1), call_stack))
         elif self.op == "+":
-            return sum(map(lambda c: c.eval(None, env, level=level + 1), call_stack))
+            summable = []
+            for item in call_stack:
+                summable.append(item.eval(None, env, level=level + 1))
+
+            print(summable)
+            return sum(summable)
+            # return Integer(sum(map(lambda c: c.eval(None, env, level=level + 1), call_stack)))
         elif self.op == "/":
             assert len(call_stack) == 2
             return call_stack[0].eval(None, env, level=level + 1) / call_stack[1].eval(None, env, level=level + 1)
@@ -175,7 +184,7 @@ def aware_split(s, on=string.whitespace):
     return items
 
 
-def parse_recursively(s, env, vars, level=0):
+def parse_recursively(s, vars, level=0):
     print("#"*(level*2+2), s)
     if s.startswith("<"):
         var_name, rest = s.split(">", 1)
@@ -186,18 +195,18 @@ def parse_recursively(s, env, vars, level=0):
         vars[var_name] = var_obj
 
         # Parse body
-        body = parse_recursively(rest, env, vars=vars, level=level + 1)
+        body = parse_recursively(rest, vars=vars, level=level + 1)
 
         return Lambda(var_obj, body)
     elif s.startswith("("):
         n = next_closing_parenthesis(s, 0, open="(", close=")")
         first, *args = aware_split(s[1:n])  # maybe this changes envs in the process?
         if args:
-            callee = parse_recursively(first, env, vars=vars, level=level + 1)
-            params = [parse_recursively(arg, env, vars=vars, level=level + 1) for arg in args]
+            callee = parse_recursively(first, vars=vars, level=level + 1)
+            params = [parse_recursively(arg, vars=vars, level=level + 1) for arg in args]
             return Call(callee, *params)
         else:
-            return parse_recursively(first, env, vars=vars, level=level + 1)  # omitting + 1 is a style pref.
+            return parse_recursively(first, vars=vars, level=level + 1)  # omitting + 1 is a style pref.
         # return Func(fun, *[parse(arg, env, vars=vars, level=level + 1) for arg in args])
     elif s.startswith("{"):
         # FIXME: Check if called later in a (...) as in {...}()
@@ -206,14 +215,11 @@ def parse_recursively(s, env, vars, level=0):
         # print(items)
 
         # q: is this the right way to go about this?
-        new_env = deepcopy(env)
+        env = Env()
         for item in items:
             ident, body = [ms.strip() for ms in item.split("=", 1)]
-            # q: this could cause trouble with recursion ?
-            # a: as I see it now it should be fine as new_env is passed by ref (i think)
-            #    so when we evaluate later we should be in the correct "state"
-            new_env[ident] = parse_recursively(body, new_env, vars=vars, level=level + 1)
-        return new_env
+            env[ident] = parse_recursively(body, vars=vars, level=level + 1)
+        return env
     elif all(map(lambda d: d in string.digits, s)):
         num = int(s)
         return Integer(num)
@@ -228,13 +234,13 @@ def parse_recursively(s, env, vars, level=0):
     elif s in "*/+-?":
         return BuiltInOp(s)
     else:
-        print("UNHANDLED:", s[0])
+        raise SyntaxError(f"Unexpected symbol {s}")
 
     # print("+"*30 + "Unreachable" + "+"*30)
 
 
 def parse(s):
-    return parse_recursively(s, env=Env(), vars={})
+    return parse_recursively(s, vars={})
 
 
 def parse_and_eval(s):
