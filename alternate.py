@@ -1,4 +1,4 @@
-import string
+import string, sys
 from copy import deepcopy
 from functools import reduce
 from pprint import pprint
@@ -18,7 +18,8 @@ class Lambda(object):
     def eval(self, call_stack=None, env=None, level=0):
         if call_stack:
             # this does recursive replace in the ast
-            self.var_obj.value = call_stack.pop(0)
+            top = call_stack.pop(0)
+            self.var_obj.value = top.eval(None, env, level=level + 1)
             print("=" * (level * 2 + 2), f"Evaluating {self.ast!r} with {self.var_obj!r}")
             return self.ast.eval(call_stack, env, level=level + 1)
         else:
@@ -63,13 +64,15 @@ class Call(object):
     def eval(self, call_stack=None, env=None, level=0):
         if isinstance(self.callee, BuiltInOp):
             assert not call_stack
-            call_stack = [arg.eval(None, env, level=level + 1) for arg in self.args]
+            # call_stack = [arg.eval(None, env, level=level + 1) for arg in self.args]
+            call_stack = self.args
             print("=" * (level * 2 + 2), "Calling", self.callee, "with", *call_stack)
             return self.callee.eval(call_stack, env, level=level + 1)
         elif isinstance(self.callee, Lambda) or isinstance(self.callee, Call):
             if not call_stack:
                 call_stack = []
-            call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
+            # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
+            call_stack = [*self.args, *call_stack]
             print("=" * (level * 2 + 2), "Calling", self.callee, "with", call_stack)
             return self.callee.eval(call_stack, env, level=level + 1)
         elif isinstance(self.callee, Env):
@@ -83,16 +86,11 @@ class Call(object):
         elif isinstance(self.callee, Ident):
             if not call_stack:
                 call_stack = []
-            call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
+            # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
+            call_stack = [*self.args, *call_stack]
             print("=" * (level * 2 + 2), "Calling", self.callee, "with", call_stack)
             resolved_identifier = self.callee.eval(None, env, level=level + 1)
             return resolved_identifier.eval(call_stack, env, level=level + 1)
-            # for arg in self.args:
-            #     resolved_arg = arg.eval()
-            #     print("=" * (level * 2 + 2), "Calling", result, "with", resolved_arg)
-            #     if isinstance(result, Lambda):
-            #         result = result.eval(resolved_arg, level=level + 1)
-            # return result
 
 
 class Env(dict):
@@ -113,18 +111,22 @@ class BuiltInOp(object):
     def eval(self, call_stack, env, level=0):
         print("=" * (level*2+2), self.op, *call_stack)
         if self.op == "*":
-            return reduce(lambda x, y: x*y, call_stack)
+            return reduce(lambda x, y: x*y, map(lambda c: c.eval(None, env, level=level + 1), call_stack))
         elif self.op == "+":
-            return sum(call_stack)
+            return sum(map(lambda c: c.eval(None, env, level=level + 1), call_stack))
         elif self.op == "/":
             assert len(call_stack) == 2
-            return call_stack[0] / call_stack[1]
+            return call_stack[0].eval(None, env, level=level + 1) / call_stack[1].eval(None, env, level=level + 1)
         elif self.op == "-":
             assert len(call_stack) == 2
-            return call_stack[0] - call_stack[1]
+            return call_stack[0].eval(None, env, level=level + 1) - call_stack[1].eval(None, env, level=level + 1)
         elif self.op == "?":
             assert len(call_stack) == 3
-            return call_stack[1] if call_stack[0] else call_stack[2]
+            # Lazy eval
+            if call_stack[0].eval(None, env, level=level + 1):
+                return call_stack[1].eval(None, env, level=level + 1)
+            else:
+                return call_stack[2].eval(None, env, level=level + 1)
 
 
 class Integer(object):
@@ -185,15 +187,6 @@ def parse_recursively(s, env, vars, level=0):
 
         # Parse body
         body = parse_recursively(rest, env, vars=vars, level=level + 1)
-
-        # Parse potential caller
-        # call_str_rest = s[end:]
-        # caller = None
-        # if call_str_rest.lstrip().startswith("["):
-        #     end_bracket = next_closing_parenthesis(s, end, open="[", close="]") + 1
-        #     # Remove [ and ] and then strip
-        #     caller_str = s[end:end_bracket].strip()[1:-1].strip()
-        #     caller = parse(caller_str, env, vars=vars, level=level + 1)
 
         return Lambda(var_obj, body)
     elif s.startswith("("):
@@ -264,6 +257,7 @@ if tests:
     assert parse("((<y>(<x>(- y x)) 3) 5)").eval() == -2
     assert parse("({A = 5, B = <x>(+ A x)} (B 11))").eval() == 16
     assert parse("({A = 5, B = <x>(+ A x)} (B A))").eval() == 10
+    assert parse("({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 10))").eval() == 3628800
 
 print("-- TEST BED --")
 # "<x>(* (? {A = x, B = <y>(+ A y)} 0 1) x)"
@@ -271,6 +265,9 @@ print("-- TEST BED --")
 #pprint(parse("(<x>(<y>(* x y)) 3 2)", env={}, vars={}))
 #parse_and_eval("(<x>(* 5 x) 3)")
 
-parse_and_eval("({A = 5, B = <x>(+ A x)} (B A))")
+#parse_and_eval("({A = 5, B = <x>(+ A x)} (B A))")
+
+# sys.setrecursionlimit(100)
+parse_and_eval("({APPEND=<x>(<y>(? x {HEAD=(x HEAD), TAIL=(APPEND (x TAIL) y)} y)), GEN=<x>(? x (APPEND (GEN (- x 1)) {HEAD=x, TAIL={}}) {})} (GEN 3))")
 
 #parse_and_eval("((<y>(<x>(- y x)) 5) 3)")
