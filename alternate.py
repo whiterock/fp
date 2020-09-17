@@ -13,14 +13,14 @@ class Lambda(object):
         self.ast = ast
 
     def __repr__(self):
-        return f"lambda<{self.var_obj!r}>({self.ast!r})"
+        return f"λ<{self.var_obj!r}>({self.ast!r})"
 
     def eval(self, call_stack=None, env=None, level=0):
         if call_stack:
             # this does recursive replace in the ast
             top = call_stack.pop(0)
-            self.var_obj.value = top.eval(None, env, level=level + 1)
             print(" |" * level + " =", f"Evaluating {self.ast!r} with {self.var_obj!r}")
+            self.var_obj.value = top.eval(None, env, level=level + 1)
             return self.ast.eval(call_stack, env, level=level + 1)
         else:
             return self
@@ -33,9 +33,9 @@ class Var(object):
 
     def __repr__(self):
         if self.value:
-            return f"var({self.name} at 0x{id(self) & 0xffff:04x} = {self.value})"
+            return f"var(\u001b[31m{self.name}\u001b[0m @ {id(self) & 0xffff:04x} = {self.value})"
         else:
-            return f"var({self.name} at 0x{id(self) & 0xffff:04x})"
+            return f"var(\u001b[31m{self.name}\u001b[0m @ {id(self) & 0xffff:04x})"
 
     def eval(self, call_stack, env, level=0):
         assert not call_stack
@@ -47,11 +47,11 @@ class Ident(object):
         self.name = name
 
     def __repr__(self):
-        return f"ident({self.name})"
+        return f"\u001b[33m{self.name}\u001b[0m"
 
     def eval(self, call_stack, env, level=0):
         assert not call_stack
-        print(" |" * level + " =", "Fetching", self.name, "from", env)
+        print(" |" * level + " =", "Fetching", repr(self), "from", env)
         return env[self.name]
 
 
@@ -93,10 +93,11 @@ class Call(object):
                 call_stack = []
             # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
             call_stack = [*self.args, *call_stack]
-            print(" |" * level + " =", "Calling", self.callee, "with", call_stack)
+            print(" |" * level + " =", "Calling", repr(self.callee), "with", call_stack)
             resolved_identifier = self.callee.eval(None, env, level=level + 1)
             return resolved_identifier.eval(call_stack, env, level=level + 1)
-        else:
+        elif isinstance(self.callee, Var):
+            # this is tricky
             raise SyntaxError()
         # elif isinstance(self.callee, Var):
         #     if not call_stack:
@@ -105,14 +106,13 @@ class Call(object):
         #     call_stack = [*self.args, *call_stack]
 
 
-
-
 class Env(dict):
     def eval(self, call_stack=None, env=None, level=0):
+        assert not call_stack
         if not env:
             env = {}
         for key, item in self.items():
-            print(" |" * level + " =", f"Setting key {key} with {item} in record")
+            print(" |" * level + " =", f"Setting key {key} with {item}")
             self[key] = item.eval(None, env={**env, **self}, level=level + 1)
 
         return self
@@ -123,10 +123,10 @@ class BuiltInOp(object):
         self.op = op
 
     def __repr__(self):
-        return f"op({self.op})"
+        return f"\u001b[33m{self.op}\u001b[0m"
 
     def eval(self, call_stack, env, level=0):
-        print(" |" * level + " =", self.op, *call_stack)
+        print(" |" * level + " =", "Operator", repr(self), "called with", call_stack)
         if self.op == "*":
             return reduce(lambda x, y: x*y, map(lambda c: c.eval(None, env, level=level + 1), call_stack))
         elif self.op == "+":
@@ -158,7 +158,7 @@ class Integer(int):
     #    self.num = num
 
     def __repr__(self):
-        return f"i'{self:d}"
+        return f"\u001b[32mi'{self:d}\u001b[0m"
 
     def eval(self, call_stack, env, level=0):
         print(" |" * level + " =", "Retrieving", self)
@@ -268,7 +268,7 @@ def parse_and_eval(s):
     pprint(evaluated)
 
 
-tests = True
+tests = False
 if tests:
     assert Integer(32) == 32
     assert parse("(+ 5 (* 3 9))").eval() == 32
@@ -292,7 +292,8 @@ print("-- TEST BED --")
 
 # sys.setrecursionlimit(100)
 
-# parse_and_eval("(+ 5 (* 3 9))")
-parse_and_eval("({APPEND=<x>(<y>(? x {HEAD=(x HEAD), TAIL=(APPEND (x TAIL) y)} y)), GEN=<x>(? x (APPEND (GEN (- x 1)) {HEAD=x, TAIL={}}) {})} (GEN 1))")
+# raises SyntaxError as it should right now
+# parse_and_eval("(<x>(x A) {A=5})")
+parse_and_eval("({A=<x>(<y>(? x {H=(x H), T=(A (x T) y)} y)), G=<x>(? x (A (G (- x 1)) {H=x, T={}}) {})} (G 2))")
 
 #parse_and_eval("((<y>(<x>(- y x)) 5) 3)")
