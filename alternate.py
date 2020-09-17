@@ -20,7 +20,7 @@ class Lambda(object):
             # this does recursive replace in the ast
             top = call_stack.pop(0)
             self.var_obj.value = top.eval(None, env, level=level + 1)
-            print("=" * (level * 2 + 2), f"Evaluating {self.ast!r} with {self.var_obj!r}")
+            print(" |" * level + " =", f"Evaluating {self.ast!r} with {self.var_obj!r}")
             return self.ast.eval(call_stack, env, level=level + 1)
         else:
             return self
@@ -33,9 +33,9 @@ class Var(object):
 
     def __repr__(self):
         if self.value:
-            return f"var({self.name} at 0x{id(self):08x} = {self.value})"
+            return f"var({self.name} at 0x{id(self) & 0xffff:04x} = {self.value})"
         else:
-            return f"var({self.name} at 0x{id(self):08x})"
+            return f"var({self.name} at 0x{id(self) & 0xffff:04x})"
 
     def eval(self, call_stack, env, level=0):
         assert not call_stack
@@ -50,6 +50,8 @@ class Ident(object):
         return f"ident({self.name})"
 
     def eval(self, call_stack, env, level=0):
+        assert not call_stack
+        print(" |" * level + " =", "Fetching", self.name, "from", env)
         return env[self.name]
 
 
@@ -66,21 +68,22 @@ class Call(object):
             assert not call_stack
             # call_stack = [arg.eval(None, env, level=level + 1) for arg in self.args]
             call_stack = self.args
-            print("=" * (level * 2 + 2), "Calling", self.callee, "with", *call_stack)
+            print(" |" * level + " =", "Calling", self.callee, "with", call_stack)
             return self.callee.eval(call_stack, env, level=level + 1)
         elif isinstance(self.callee, Lambda) or isinstance(self.callee, Call):
             if not call_stack:
                 call_stack = []
             # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
             call_stack = [*self.args, *call_stack]
-            print("=" * (level * 2 + 2), "Calling", self.callee, "with", call_stack)
+            print(" |" * level + " =", "Calling", self.callee, "with", call_stack)
             return self.callee.eval(call_stack, env, level=level + 1)
         elif isinstance(self.callee, Env):
             new_env = deepcopy(env)  # todo: potential error?
             if not new_env:
                 new_env = Env()
 
-            print("=" * (level * 2 + 2), "Let", self.args[0], "in", self.callee)
+            assert len(self.args) == 1
+            print(" |" * level + " =", "Let", self.args[0], "in", self.callee)
             new_env.update(self.callee.eval(None, env=env, level=level + 1))
             # print(type(new_env))
             assert len(self.args) == 1  # q: is this right?
@@ -90,16 +93,27 @@ class Call(object):
                 call_stack = []
             # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
             call_stack = [*self.args, *call_stack]
-            print("=" * (level * 2 + 2), "Calling", self.callee, "with", call_stack)
+            print(" |" * level + " =", "Calling", self.callee, "with", call_stack)
             resolved_identifier = self.callee.eval(None, env, level=level + 1)
             return resolved_identifier.eval(call_stack, env, level=level + 1)
+        else:
+            raise SyntaxError()
+        # elif isinstance(self.callee, Var):
+        #     if not call_stack:
+        #         call_stack = []
+        #     # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
+        #     call_stack = [*self.args, *call_stack]
+
+
 
 
 class Env(dict):
     def eval(self, call_stack=None, env=None, level=0):
+        if not env:
+            env = {}
         for key, item in self.items():
-            print("=" * (level * 2 + 2), f"Setting key {key} with {item} in record")
-            self[key] = item.eval(None, env=self, level=level + 1)
+            print(" |" * level + " =", f"Setting key {key} with {item} in record")
+            self[key] = item.eval(None, env={**env, **self}, level=level + 1)
 
         return self
 
@@ -112,7 +126,7 @@ class BuiltInOp(object):
         return f"op({self.op})"
 
     def eval(self, call_stack, env, level=0):
-        print("=" * (level*2+2), self.op, *call_stack)
+        print(" |" * level + " =", self.op, *call_stack)
         if self.op == "*":
             return reduce(lambda x, y: x*y, map(lambda c: c.eval(None, env, level=level + 1), call_stack))
         elif self.op == "+":
@@ -121,14 +135,15 @@ class BuiltInOp(object):
                 summable.append(item.eval(None, env, level=level + 1))
 
             print(summable)
-            return sum(summable)
+            print(sum(summable))
+            return Integer(sum(summable))
             # return Integer(sum(map(lambda c: c.eval(None, env, level=level + 1), call_stack)))
         elif self.op == "/":
             assert len(call_stack) == 2
-            return call_stack[0].eval(None, env, level=level + 1) / call_stack[1].eval(None, env, level=level + 1)
+            return Integer(call_stack[0].eval(None, env, level=level + 1) / call_stack[1].eval(None, env, level=level + 1))
         elif self.op == "-":
             assert len(call_stack) == 2
-            return call_stack[0].eval(None, env, level=level + 1) - call_stack[1].eval(None, env, level=level + 1)
+            return Integer(call_stack[0].eval(None, env, level=level + 1) - call_stack[1].eval(None, env, level=level + 1))
         elif self.op == "?":
             assert len(call_stack) == 3
             # Lazy eval
@@ -138,16 +153,17 @@ class BuiltInOp(object):
                 return call_stack[2].eval(None, env, level=level + 1)
 
 
-class Integer(object):
-    def __init__(self, num):
-        self.num = num
+class Integer(int):
+    # def __init__(self, num):
+    #    self.num = num
 
     def __repr__(self):
-        return f"i'{self.num}"
+        return f"i'{self:d}"
 
     def eval(self, call_stack, env, level=0):
+        print(" |" * level + " =", "Retrieving", self)
         assert not call_stack
-        return self.num
+        return self #.num
 
 
 def next_closing_parenthesis(s, i, open, close):
@@ -254,6 +270,7 @@ def parse_and_eval(s):
 
 tests = True
 if tests:
+    assert Integer(32) == 32
     assert parse("(+ 5 (* 3 9))").eval() == 32
     assert parse("(((+ 5 ((((* ((3)) 9)))))))").eval() == 32
     assert parse("(<x>(* 5 x) 3)").eval() == 15
@@ -274,6 +291,8 @@ print("-- TEST BED --")
 #parse_and_eval("({A = 5, B = <x>(+ A x)} (B A))")
 
 # sys.setrecursionlimit(100)
-parse_and_eval("({APPEND=<x>(<y>(? x {HEAD=(x HEAD), TAIL=(APPEND (x TAIL) y)} y)), GEN=<x>(? x (APPEND (GEN (- x 1)) {HEAD=x, TAIL={}}) {})} (GEN 3))")
+
+# parse_and_eval("(+ 5 (* 3 9))")
+parse_and_eval("({APPEND=<x>(<y>(? x {HEAD=(x HEAD), TAIL=(APPEND (x TAIL) y)} y)), GEN=<x>(? x (APPEND (GEN (- x 1)) {HEAD=x, TAIL={}}) {})} (GEN 1))")
 
 #parse_and_eval("((<y>(<x>(- y x)) 5) 3)")
