@@ -44,6 +44,13 @@ def rescue_lambdas(s):
     except ValueError:  # .index returns ValueError: substring not found
         return s
 
+def recursive_replace_empty_lists_with_empty_dicts(l):
+    for n, i in enumerate(l):
+        if i == []:
+            l[n] = {}
+        if type(i) is list:
+            l[n] = recursive_replace_empty_lists_with_empty_dicts(l[n])
+    return l
 
 def parse(s):
     s = ' '.join(s.split())
@@ -66,7 +73,8 @@ def parse(s):
         replace('=', '= '). \
         split()
     #print(ast)
-    return parse_tokens(ast)
+    e = parse_tokens(ast)
+    return recursive_replace_empty_lists_with_empty_dicts(e)
 
 
 def parse_tokens(e):
@@ -156,13 +164,15 @@ def evaluate(e, env=environment):
         if '->' in e[0]:
             variable_name = evaluate(e[0], env)
             body = e[1]
+            if len(e) > 2:
+                return evaluate([Lamb(variable_name, body, env)] + e[2:])
             return Lamb(variable_name, body, env)
         elif e[0] in environment:
             if len(e) == 3:
                 return environment[e[0]](evaluate(e[1], env), evaluate(e[2], env))
             if e[0] == 'cond' and len(e) == 4:
                 c = evaluate(e[1], env)
-                if c == 0 or c == []:
+                if c == 0 or c == {}:
                     return evaluate(e[3], env)
                 return evaluate(e[2], env)
         elif '=' in e[0]:
@@ -208,6 +218,19 @@ if __name__ == "__main__":
         assert(evaluate(parse("cond {} 2 3")) == 3)
         assert evaluate(parse("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 10")) == 3628800
 
+        # whiterock's tests taken from alternate.py
+        assert evaluate(parse("{A=5, B=x->(plus A x)} B 11")) == 16
+        assert evaluate(parse("{A=5, B=x->(plus A x)} B A")) == 10
+        assert evaluate(parse("{A=8, B={C=3}} B C")) == 3
+        assert evaluate(parse("x->(x A) {A=5}")) == 5
+
+        assert evaluate(parse("""{
+        append= x->y->cond x {head=x head, tail=append(x tail)y} y,
+        gen=x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
+        }
+        gen 3""")) == {'head': 1, 'tail': {'head': 2, 'tail': {'head': 3, 'tail': {}}}}
+
+    #print(evaluate(parse("x->(x A) {A=5}")))
 
     # print(parse("""{
     #     append= x->y->cond x {head=x head, tail=append(x tail)y} y
@@ -219,11 +242,11 @@ if __name__ == "__main__":
     #     }
     #     append {head=1, tail={}} {head=2, tail={head=3,tail={}}}""")))
 
-    print(evaluate(parse("""{
-        append= x->y->cond x {head=x head, tail=append(x tail)y} y,
-        gen=x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
-        }
-        gen 3""")))
+    # print(evaluate(parse("""{
+    #     append= x->y->cond x {head=x head, tail=append(x tail)y} y,
+    #     gen=x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
+    #     }
+    #     gen 3""")))
 
     #print(evaluate(parse("{a={b=1},c=a b}c")))
     #print(evaluate(parse("{a=x->x head, b={head=1}, c= a b}")))

@@ -52,7 +52,7 @@ class Ident(object):
     def eval(self, call_stack, env, level=0):
         assert not call_stack
         print(" |" * level + " =", "Fetching", repr(self), "from", env)
-        return env[self.name]
+        return deepcopy(env[self.name])
 
 
 class Call(object):
@@ -298,6 +298,16 @@ print("-- TEST BED --")
 
 # sys.setrecursionlimit(100)
 
+# gen 0 -> {}
+# gen 1 ->
+# x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
+# cond 1 (append(gen(minus 11)) {head=1, tail={}}) {}
+# (append(gen(minus 11)) {head=1, tail={}})
+# (append(gen(0)) {head=1, tail={}})
+# (append {} {head=1, tail={}})
+# {head=1, tail={}}
+
 parse_and_eval("({A=<x>(<y>(? x {H=(x H), T=(A (x T) y)} y)), G=<x>(? x (A (G (- x 1)) {H=x, T={}}) {})} (G 3))")
+# 
 
 #parse_and_eval("((<y>(<x>(- y x)) 5) 3)")
