@@ -2,6 +2,21 @@ import string, sys, copy
 from pprint import pprint, pformat
 
 
+def next_closing_brace(e, i):
+    level = 0
+    while i < len(e):
+        if e[i] == '}':
+            if level == 0:
+                return i
+            else:
+                level -= 1
+        elif e[i] == '{':
+            level += 1
+
+        i += 1
+    # should not be reached
+    raise SyntaxError("Unbalanced parenthesis at", i)
+
 def next_closing_parenthesis(e, i):
     level = 0
     while i < len(e):
@@ -40,10 +55,9 @@ def parse(s):
     if s[0] != '(' or s[-1] != ')':
         s = '(' + s + ')'
 
-    if '}' in s and '=' in s:  # TODO: turning { .. }minus(b 5)4 into { .. }(minus(b 5)4) might not be the best way to go about this.
-        i = s.rfind('}') + 1
-        if i < len(s) - 1:
-            s = s[:i] + '(' + s[i:] + ')'
+    if s[1] == '{':
+        i = next_closing_brace(s, 2)+1
+        s = s[:i] + '(' + s[i:] + ')'
 
     ast = s.replace('(', ' ( '). \
         replace(')', ' ) '). \
@@ -124,7 +138,7 @@ def evaluate(e, env=environment):
             return e[0:e.index('->')]
         elif e in env and e not in environment:
             return env[e]
-        return  # Critical, raise error? # this path was chosen with previously faulty "fac"
+        return  e
     if isinstance(e, list) and len(e) == 2:
         try:  # NOTE: this is how i set the environment rn :/
             if '=' in e[0][0]:  # is there a more general rule
@@ -134,8 +148,8 @@ def evaluate(e, env=environment):
             pass
     if isinstance(e, int) or isinstance(e, Lamb) or isinstance(e, dict):
         return e
-    if isinstance(e[0], Lamb) and isinstance(e[1], int):
-        body_copy = copy.deepcopy(e[0].body)  # what for? strings are immutable
+    if isinstance(e[0], Lamb) and (isinstance(e[1], int) or isinstance(e[1], dict) or e[1] == []):
+        body_copy = copy.deepcopy(e[0].body)  # what for? strings are immutable #a: we change list not string
         new_body = recursive_replace(body_copy, e[0].variable_name, e[1])
         return evaluate([evaluate(new_body, env)] + e[2:], env)
     if isinstance(e[0], str):
@@ -159,11 +173,17 @@ def evaluate(e, env=environment):
                 value = evaluate(e[i + 1], {**env, **r})
                 r[name] = value
             return r
+    if isinstance(e[0], dict) and len(e) == 2:
+        return evaluate(e[1], {**env, **e[0]})
     if isinstance(e, list):
         a = []
+        d = False
         for b in e:
-            a.append(evaluate(b, env))
-        return evaluate(a, env)
+            c = evaluate(b, env)
+            a.append(c)
+            if b != c:
+                d = True
+        return evaluate(a, env) if d else a
 
 
 if __name__ == "__main__":
@@ -177,7 +197,7 @@ if __name__ == "__main__":
     # print(evaluate(parse("((x->(y->plus(mult x x)y))2)3")))
     # print(evaluate(parse("{a=x->y->plus(mult x x)y, b=a 2, c=b 3}")))
 
-    test = False
+    test = True
     if test:
         assert(evaluate(parse("(x->y->plus(mult x x)y) 2 3")) == 7)
         assert(evaluate(parse("((x->(y->plus(mult x x)y))2)3")) == 7)
@@ -188,11 +208,25 @@ if __name__ == "__main__":
         assert(evaluate(parse("cond {} 2 3")) == 3)
         assert evaluate(parse("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 10")) == 3628800
 
+
+    # print(parse("""{
+    #     append= x->y->cond x {head=x head, tail=append(x tail)y} y
+    #     }
+    #     append {head=1, tail={}} {}"""))
+
+    # print(evaluate(parse("""{
+    #     append= x->y->cond x {head=x head, tail=append(x tail)y} y
+    #     }
+    #     append {head=1, tail={}} {head=2, tail={head=3,tail={}}}""")))
+
     print(evaluate(parse("""{
         append= x->y->cond x {head=x head, tail=append(x tail)y} y,
         gen=x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
         }
         gen 3""")))
+
+    #print(evaluate(parse("{a={b=1},c=a b}c")))
+    #print(evaluate(parse("{a=x->x head, b={head=1}, c= a b}")))
 
     # print()
     # debug("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 4")
