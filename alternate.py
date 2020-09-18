@@ -78,26 +78,30 @@ class Call(object):
             print(" |" * level + " =", "Calling", self.callee, "with", call_stack)
             return self.callee.eval(call_stack, env, level=level + 1)
         elif isinstance(self.callee, Env):
-            new_env = deepcopy(env)  # todo: potential error?
-            if not new_env:
-                new_env = Env()
+            #new_env = deepcopy(env)  # todo: potential error?
+            #if not new_env:
+            #    new_env = Env()
 
             assert len(self.args) == 1
             print(" |" * level + " =", "Let", self.args[0], "in", self.callee)
-            new_env.update(self.callee.eval(None, env=env, level=level + 1))
+            new_env = self.callee.eval(None, env=env, level=level + 1)
             # print(type(new_env))
             assert len(self.args) == 1  # q: is this right?
             return self.args[0].eval(call_stack, env=new_env, level=level + 1)
-        elif isinstance(self.callee, Ident):
+        elif isinstance(self.callee, Ident) or isinstance(self.callee, Var):
             if not call_stack:
                 call_stack = []
             # call_stack = [*[arg.eval(None, env, level=level + 1) for arg in self.args], *call_stack]
             call_stack = [*self.args, *call_stack]
             print(" |" * level + " =", "Calling", repr(self.callee), "with", call_stack)
             resolved_identifier = self.callee.eval(None, env, level=level + 1)
-            return resolved_identifier.eval(call_stack, env, level=level + 1)
-        elif isinstance(self.callee, Var):
+            # pass it here so assert in Env holds.
+            new_call = Call(resolved_identifier, *call_stack)
+            return new_call.eval(None, env, level=level + 1)
+            # return resolved_identifier.eval(call_stack, env, level=level + 1)
+        else:
             # this is tricky
+            # we should probably construct a new call obj here with resolved as callee
             raise SyntaxError()
         # elif isinstance(self.callee, Var):
         #     if not call_stack:
@@ -268,7 +272,7 @@ def parse_and_eval(s):
     pprint(evaluated)
 
 
-tests = False
+tests = True
 if tests:
     assert Integer(32) == 32
     assert parse("(+ 5 (* 3 9))").eval() == 32
@@ -280,7 +284,9 @@ if tests:
     assert parse("((<y>(<x>(- y x)) 3) 5)").eval() == -2
     assert parse("({A = 5, B = <x>(+ A x)} (B 11))").eval() == 16
     assert parse("({A = 5, B = <x>(+ A x)} (B A))").eval() == 10
-    assert parse("({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 10))").eval() == 3628800
+    assert parse("({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 4))").eval() == 24
+    assert parse("({A=8, B={C=3}} (B C))").eval() == 3
+    assert parse("(<x>(x A) {A=5})").eval() == 5
 
 print("-- TEST BED --")
 # "<x>(* (? {A = x, B = <y>(+ A y)} 0 1) x)"
@@ -292,8 +298,6 @@ print("-- TEST BED --")
 
 # sys.setrecursionlimit(100)
 
-# raises SyntaxError as it should right now
-# parse_and_eval("(<x>(x A) {A=5})")
-parse_and_eval("({A=<x>(<y>(? x {H=(x H), T=(A (x T) y)} y)), G=<x>(? x (A (G (- x 1)) {H=x, T={}}) {})} (G 2))")
+parse_and_eval("({A=<x>(<y>(? x {H=(x H), T=(A (x T) y)} y)), G=<x>(? x (A (G (- x 1)) {H=x, T={}}) {})} (G 3))")
 
 #parse_and_eval("((<y>(<x>(- y x)) 5) 3)")
