@@ -2,6 +2,9 @@ import string, sys, copy
 from pprint import pprint, pformat
 
 
+DEBUG = False
+
+
 def next_closing_brace(e, i):
     level = 0
     while i < len(e):
@@ -134,8 +137,9 @@ exnum = 0
 
 def evaluate(e, env=environment):
     global exnum
-    print(f"{exnum:04d}: ")
-    print(pformat(e, width=160))
+    if DEBUG:
+        print(f"{exnum:04d}: ")
+        print(pformat(e, width=160))
     exnum += 1
     if e == []:
         return e
@@ -197,16 +201,6 @@ def evaluate(e, env=environment):
 
 
 if __name__ == "__main__":
-    # if len(sys.argv) != 2:
-    #   exit()
-    # p = sys.argv[1]
-    # test = "{a=5,b={c=3, d=4},e=7}((x->(y->+(* x x)y))2)3"
-
-    # check this out :)
-    # print(evaluate(parse("(x->y->plus(mult x x)y) 2 3")))
-    # print(evaluate(parse("((x->(y->plus(mult x x)y))2)3")))
-    # print(evaluate(parse("{a=x->y->plus(mult x x)y, b=a 2, c=b 3}")))
-
     test = True
     if test:
         assert(evaluate(parse("(x->y->plus(mult x x)y) 2 3")) == 7)
@@ -229,6 +223,13 @@ if __name__ == "__main__":
         gen=x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
         }
         gen 3""")) == {'head': 1, 'tail': {'head': 2, 'tail': {'head': 3, 'tail': {}}}}
+
+    if len(sys.argv) != 2:
+        print("Please provide a file name to open!")
+        exit()
+    p = sys.argv[1]
+    with open(p, "r") as fh:
+        print(evaluate(parse(fh.read())))
 
     #print(evaluate(parse("x->(x A) {A=5}")))
 
