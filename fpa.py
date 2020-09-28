@@ -5,7 +5,7 @@ from pprint import pprint
 
 
 strip = lambda s: s.strip()
-DEBUG = False
+DEBUG = True
 
 
 class Lambda(object):
@@ -52,10 +52,12 @@ class Ident(object):
         return f"\u001b[33m{self.name}\u001b[0m"
 
     def eval(self, call_stack, env, level=0):
-        assert not call_stack
         if DEBUG:
             print(" |" * level + " =", "Fetching", repr(self), "from", env)
-        return deepcopy(env[self.name])
+        if not call_stack:
+            return deepcopy(env[self.name])
+        else:
+            return deepcopy(env[self.name]).eval(call_stack, env, level=level + 1)
 
 
 class Call(object):
@@ -277,6 +279,7 @@ if tests:
     assert parse("({A = 5, B = <x>(+ A x)} (B 11))").eval() == 16
     assert parse("({A = 5, B = <x>(+ A x)} (B A))").eval() == 10
     assert parse("({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 4))").eval() == 24
+    assert parse("(({FAC=<x>(? x (* x (FAC (- x 1))) 1)} FAC) 4)").eval() == 24
     assert parse("({A=8, B={C=3}} (B C))").eval() == 3
     assert parse("(<x>(x A) {A=5})").eval() == 5
 
