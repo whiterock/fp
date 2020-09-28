@@ -4,7 +4,7 @@ Wir haben zuerst die vorgeschlagene Syntax aus dem Angaben-pdf implementiert wob
 
 ## how to compile
 
-Python: entfällt.
+Python 3.8.5 (sollte ab Python >= 3 funktionieren): entfällt.
 
 ## how to run
 
@@ -65,21 +65,23 @@ Weil ja schließlich mindestens eine Version bewertet werden muss, entscheiden w
     * `*` Multiplikation
     * `/` Division
     * `?` Ternary Operator / Conditional
-* Lambda function: `<varname>(...)` wobei `varname` lowercase sein muss und `...` den function body darstellt
+* Lambda function: `<varname>(...)` wobei `varname` lowercase sein muss und `...` den function body darstellt. Z.B. `<x>(+ x 1)` oder `<x>(<y>(* x y))`.
 * Record: `{IDENTONE=..., IDENTTWO=..., .,.}` wobei die Identifier uppercase sein müssen und `...` die zuzuweisende Expression darstellt, welche eine Zahl, ein anderer Record, eine Lambda function, oder ein Call sein kann. `.,.` weißt darauf hin, dass records beliebig groß sein können (falls ihr Computer den nötigen RAM hat)
-* Call: `(callee arg1 arg2 arg3 ...)` wobei die argumente beliebig sind. Die Ausführung eines calls hängt vom callee ab:
+* Call: `(callee arg1 arg2 arg3 ...)` wobei die Argumente beliebig sind. Die Ausführung eines calls hängt vom callee ab:
+    * Keine Argumente: Evaluation des callee ohne neue Items am Call Stack. Dies hat den Zweck beliebige Klammern tolerieren zu können, i.e. `((+ (5) (3)))`.
     * Lambda function: Wird mit dem letzten Argument aufgerufen. Die restlichen werden rekursiv als call_stack nach innen weitergegeben.
     * Record: Der Eintrag des Records mit dem Identifier oder Call arg1 wird evaluiert. Es muss genau ein Argument übergeben werden, sonst Fehler.
+    * Call: Rekursive Behandlung. Alle Argumente werden dem Call Stack zugefügt.
     * Operator:
         * `*` und `+`: Beliebig viele argumente, also z.b. `(+ 1 2 3 4)`
         * `/` und `-`: Genau zwei Argumente, also z.B. `<x>(- x 1)` oder `(/ 8 2)`
-        * `?`: Genau drei Argumente mit der Semantik `(? condition then else)`. Condition ist dann erfüllt wenn sie zu ungleich 0 evaluiert. Siehe z.B. das Beispiel zur Fakultät weiter unten.
+        * `?`: Genau drei Argumente mit der Semantik `(? condition then else)`. Condition ist dann erfüllt wenn sie zu ungleich 0 evaluiert. Siehe z.B. das Beispiel zur Fakultät weiter unten. Die Evaluation ist lazy.
         
 Betrachten wir das Beispiel der Fakultät (an diesem wir auch Rekursion sehen können):
 ```lisp
 ({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 4))
 ```
-Zuerst stecken wir unsere Fakultätsfunktion in einen Record um sie leicht rekursiv aufrufen zu können. Dann betrachten wir die Variable x, falls Sie ungleich 0 ist, so machen wir einen call der `x` multipliziert mit dem Ergebnis eines rekursives Aufrufs von `FAC` dessen Argument `(- x 1)` ist, also eines weniger als `x`, andernfalls geben wir 1 zurück, was auch die Rekursion stoppt. Um nun diese Funktion aufrufen zu können, packen wir Sie in einen Call mit dem Record als Callee und haben nun im (einzigen) Argument Zugriff darauf, wo wir FAC mit 4 ausführen. Alternativ kann man auch wie folgt vorgehen:
+Zuerst stecken wir unsere Fakultätsfunktion in einen Record um sie leicht rekursiv aufrufen zu können. In dieser betrachten wir zunächst die Variable x: Falls Sie ungleich 0 ist, so machen wir einen call der `x` multipliziert mit dem Ergebnis eines rekursives Aufrufs von `FAC` dessen Argument `(- x 1)` ist, also eines weniger als `x`, andernfalls geben wir 1 zurück, was dann die Rekursion stoppt. Um nun diese Funktion aufrufen zu können, packen wir Sie in einen Call mit dem Record als Callee und haben nun im (einzigen) Argument Zugriff darauf, wo wir FAC mit 4 ausführen. Alternativ kann man auch wie folgt vorgehen:
 ```lisp
 (({FAC=<x>(? x (* x (FAC (- x 1))) 1)} FAC) 4)
 ```
@@ -87,7 +89,7 @@ In beiden Fällen lautet das Ergebnis 24.
 
 ## testing
 
-Klarerweise wurde während der Implementation die ganze Zeit getestet. Folgende Tests haben sich als nützlich herausgestellt beim Einführen neuer Features während des Entwicklungsprozesses das Brechen älterer Features zu erkennen bzw. zu verhindern:
+Klarerweise wurde während der Programmierung die ganze Zeit getestet. Folgende Tests haben sich als nützlich herausgestellt, beim Einführen neuer Features während des Entwicklungsprozesses, um das Brechen älterer Features zu erkennen bzw. zu verhindern:
 
 ```python
 assert parse("(+ 5 (* 3 9))").eval() == 32
@@ -109,9 +111,10 @@ assert parse("(<x>(x A) {A=5})").eval() == 5
 
 Zur Laufzeit von parse lässt sich sagen, dass, bezeichne `n` die Länge des Programms als Input, in jedem rekursiven Aufruf mindestens ein Zeichen behandelt wird und pro Zeichen mit maximal konstanter Anzahl an Aufrufen alle Zeichen danach betrachtet werden. Pro Zeichen lässt sich dieser Aufwand dann mit `cn` von oben beschränken und damit erhalten wir insgesamt die worst case performance von parse mit `O(n^2)`
 
-Die Laufzeit des Evaluierens hängt klarerweise von dem zu interpretierenden Programmes ab.
+Die Laufzeit des Evaluierens hängt klarerweise von dem zu interpretierenden Programm ab.
 
 ## allocation of work
-Wir haben gemeinsam begonnen mit dem Grundgerüst für fpd und uns gegenseitig geholfen Fehler zu finden und Ratschläge zu geben. Nach einem komplizierterem Bug hat Herr Weissenfels dann eine alternative Version begonnen zu schreiben. Schließlich konnten wir mit gegenseitiger Hilfe (-Werbung- lässt sich gut durch VSCode Liveshare umsetzen) beide Versionen zum Laufen bringen und waren dann mit Testen und Bug Fixing beschäftigt. Tatsaechlich war der Entwicklungsprozess ineinander stark verflochten und eine genauere Aufteilung ist den Git-Logs zu entnehmen.
+
+Wir haben gemeinsam begonnen mit dem Grundgerüst für fpd und uns gegenseitig geholfen Fehler zu finden und Ratschläge zu geben. Nach einem komplizierterem Bug hat Herr Weissenfels dann begonnen eine alternative Version zu schreiben. Schließlich konnten wir mit gegenseitiger Hilfe (-Werbung- lässt sich gut durch VSCode Liveshare umsetzen) beide Versionen zum Laufen bringen und waren dann mit Testen und Bug Fixing beschäftigt. Tatsaechlich war der Entwicklungsprozess ineinander stark verflochten und eine genauere Aufteilung ist den Git-Logs zu entnehmen.
 
 Hiermit bestaetigen wir, dieses Programm persoenlich entwickelt zu haben.
