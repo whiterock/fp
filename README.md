@@ -110,3 +110,8 @@ assert parse("(<x>(x A) {A=5})").eval() == 5
 Zur Laufzeit von parse lässt sich sagen, dass, bezeichne `n` die Länge des Programms als Input, in jedem rekursiven Aufruf mindestens ein Zeichen behandelt wird und pro Zeichen mit maximal konstanter Anzahl an Aufrufen alle Zeichen danach betrachtet werden. Pro Zeichen lässt sich dieser Aufwand dann mit `cn` von oben beschränken und damit erhalten wir insgesamt die worst case performance von parse mit `O(n^2)`
 
 Die Laufzeit des Evaluierens hängt klarerweise von dem zu interpretierenden Programmes ab.
+
+## allocation of work
+Wir haben gemeinsam begonnen mit dem Grundgerüst für fpd und uns gegenseitig geholfen Fehler zu finden und Ratschläge zu geben. Nach einem komplizierterem Bug hat Herr Weissenfels dann eine alternative Version begonnen zu schreiben. Schließlich konnten wir mit gegenseitiger Hilfe (-Werbung- lässt sich gut durch VSCode Liveshare umsetzen) beide Versionen zum Laufen bringen und waren dann mit Testen und Bug Fixing beschäftigt. Tatsaechlich war der Entwicklungsprozess ineinander stark verflochten und eine genauere Aufteilung ist den Git-Logs zu entnehmen.
+
+Hiermit bestaetigen wir, dieses Programm persoenlich entwickelt zu haben.
