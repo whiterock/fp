@@ -280,33 +280,9 @@ if tests:
     assert parse("({A=8, B={C=3}} (B C))").eval() == 3
     assert parse("(<x>(x A) {A=5})").eval() == 5
 
-# print("-- TEST BED --")
-# "<x>(* (? {A = x, B = <y>(+ A y)} 0 1) x)"
-#pprint(parse("(<x>(* (? {x = 5, b = (x <y>(+ 7 y))} 0 1) x) 3)", env={}, vars={}))
-#pprint(parse("(<x>(<y>(* x y)) 3 2)", env={}, vars={}))
-#parse_and_eval("(<x>(* 5 x) 3)")
-
-#parse_and_eval("({A = 5, B = <x>(+ A x)} (B A))")
-
-# sys.setrecursionlimit(100)
-
-# gen 0 -> {}
-# gen 1 ->
-# x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
-# cond 1 (append(gen(minus 11)) {head=1, tail={}}) {}
-# (append(gen(minus 11)) {head=1, tail={}})
-# (append(gen(0)) {head=1, tail={}})
-# (append {} {head=1, tail={}})
-# {head=1, tail={}}
-
 if len(sys.argv) != 2:
     print("Please provide a file name to open!")
     exit()
 p = sys.argv[1]
 with open(p, "r") as fh:
     parse_and_eval(fh.read())
-
-#parse_and_eval("({APPEND=<x>(<y>(? x {HEAD=(x HEAD), TAIL=(APPEND (x TAIL) y)} y)), GEN=<x>(? x (APPEND (GEN (- x 1)) {HEAD=x, TAIL={}}) {})} (GEN 3))")
-# 
-
-#parse_and_eval("((<y>(<x>(- y x)) 5) 3)")
