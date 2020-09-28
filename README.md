@@ -104,3 +104,9 @@ assert parse("(({FAC=<x>(? x (* x (FAC (- x 1))) 1)} FAC) 4)").eval() == 24
 assert parse("({A=8, B={C=3}} (B C))").eval() == 3
 assert parse("(<x>(x A) {A=5})").eval() == 5
 ```
+
+### complexity
+
+Zur Laufzeit von parse lässt sich sagen, dass, bezeichne `n` die Länge des Programms als Input, mindestens ein Zeichen behandelt wird und pro Zeichen mit maximal konstanter Anzahl an Aufrufen alle Zeichen danach betrachtet werden. Pro Zeichen lässt sich dieser Aufwand dann mit `cn` von oben beschränken und damit erhalten wir insgesamt die worst case performance von parse mit `O(n^2)`
+
+Die Laufzeit des Evaluierens hängt klarerweise von dem zu interpretierenden Programmes ab.
