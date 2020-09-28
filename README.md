@@ -52,3 +52,33 @@ Ausführen liefert
 {'HEAD': i'1,
  'TAIL': {'HEAD': i'2, 'TAIL': {'HEAD': i'3, 'TAIL': {}}}}
 ```
+
+Weil ja schließlich mindestens eine Version bewertet werden muss, entscheiden wir uns für `fpa` und der Rest dieser Readme beschäftigt sich nur mehr damit.
+
+## fpa
+### syntax
+* Zahl: `zahl`, z.B. `3`, `80`, `-6`
+* Operatoren:
+    * `+` Addition
+    * `-` Subtraktion
+    * `*` Multiplikation
+    * `/` Division
+    * `?` Ternary Operator / Conditional
+* Lambda function: `<varname>(...)` wobei `varname` lowercase sein muss und `...` den function body darstellt
+* Record: `{IDENTONE=..., IDENTTWO=..., .,.}` wobei die Identifier uppercase sein müssen und `...` die zuzuweisende Expression darstellt, welche eine Zahl, ein anderer Record, eine Lambda function, oder ein Call sein kann. `.,.` weißt darauf hin, dass records beliebig groß sein können (falls ihr Computer den nötigen RAM hat)
+* Call: `(callee arg1 arg2 arg3 ...)` wobei die argumente beliebig sind. Die Ausführung eines calls hängt vom callee ab:
+    * Lambda function: Wird mit dem letzten Argument aufgerufen. Die restlichen werden rekursiv als call_stack nach innen weitergegeben.
+    * Record: Der Eintrag des Records mit dem Identifier oder Call arg1 wird evaluiert. Es muss genau ein Argument übergeben werden, sonst Fehler.
+    * Operator:
+        * `*` und `+`: Beliebig viele argumente, also z.b. `(+ 1 2 3 4)`
+        * `/` und `-`: Genau zwei Argumente, also z.B. `<x>(- x 1)` oder `(/ 8 2)`
+        * `?`: Genau drei Argumente mit der Semantik `(? condition then else)`. Condition ist dann erfüllt wenn sie zu ungleich 0 evaluiert. Siehe z.B. das Beispiel zur Fakultät weiter unten.
+        
+Betrachten wir das Beispiel der Fakultät (an diesem wir auch Rekursion sehen können):
+```lisp
+({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 4))
+```
+Zuerst stecken wir unsere Fakultätsfunktion in einen Record um sie leicht rekursiv aufrufen zu können. Dann betrachten wir die Variable x, falls Sie ungleich 0 ist, so machen wir einen call der `x` multipliziert mit einem rekursiven aufruf von `FAC` dessen Argument `(- x 1)` ist, also eines weniger als `x`, andernfalls geben wir 1 zurück, was auch die Rekursion stoppt. Um nun diese Funktion aufrufen zu können, packen wir Sie in einen Call mit dem Record als erstes Callee und haben nun im (einzigen) Argument Zugriff darauf. Alternativ kann man auch wie folgt vorgehen:
+```lisp
+(({FAC=<x>(? x (* x (FAC (- x 1))) 1)} FAC) 4)
+```
