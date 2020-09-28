@@ -230,37 +230,3 @@ if __name__ == "__main__":
     p = sys.argv[1]
     with open(p, "r") as fh:
         print(evaluate(parse(fh.read())))
-
-    #print(evaluate(parse("x->(x A) {A=5}")))
-
-    # print(parse("""{
-    #     append= x->y->cond x {head=x head, tail=append(x tail)y} y
-    #     }
-    #     append {head=1, tail={}} {}"""))
-
-    # print(evaluate(parse("""{
-    #     append= x->y->cond x {head=x head, tail=append(x tail)y} y
-    #     }
-    #     append {head=1, tail={}} {head=2, tail={head=3,tail={}}}""")))
-
-    # print(evaluate(parse("""{
-    #     append= x->y->cond x {head=x head, tail=append(x tail)y} y,
-    #     gen=x->cond x (append(gen(minus x 1)) {head=x, tail={}}) {}
-    #     }
-    #     gen 3""")))
-
-    #print(evaluate(parse("{a={b=1},c=a b}c")))
-    #print(evaluate(parse("{a=x->x head, b={head=1}, c= a b}")))
-
-    # print()
-    # debug("{fac=x->(cond x (mult x(fac (minus x 1))) 1)} fac 4")
-
-    # print(evaluate(parse("""   
-    # (x->
-    #     (y->
-    #         (
-    #             plus(mult x 2)(mult y y)
-    #         )
-    #     )1
-    # )4
-    # """)))
