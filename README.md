@@ -55,8 +55,9 @@ Ausführen liefert
 
 Weil ja schließlich mindestens eine Version bewertet werden muss, entscheiden wir uns für `fpa` und der Rest dieser Readme beschäftigt sich nur mehr damit.
 
-## fpa
-### syntax
+# fpa
+
+## syntax
 * Zahl: `zahl`, z.B. `3`, `80`, `-6`
 * Operatoren:
     * `+` Addition
@@ -78,8 +79,28 @@ Betrachten wir das Beispiel der Fakultät (an diesem wir auch Rekursion sehen k�
 ```lisp
 ({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 4))
 ```
-Zuerst stecken wir unsere Fakultätsfunktion in einen Record um sie leicht rekursiv aufrufen zu können. Dann betrachten wir die Variable x, falls Sie ungleich 0 ist, so machen wir einen call der `x` multipliziert mit einem rekursiven aufruf von `FAC` dessen Argument `(- x 1)` ist, also eines weniger als `x`, andernfalls geben wir 1 zurück, was auch die Rekursion stoppt. Um nun diese Funktion aufrufen zu können, packen wir Sie in einen Call mit dem Record als erstes Callee und haben nun im (einzigen) Argument Zugriff darauf, wo wir FAC mit 4 ausführen. Alternativ kann man auch wie folgt vorgehen:
+Zuerst stecken wir unsere Fakultätsfunktion in einen Record um sie leicht rekursiv aufrufen zu können. Dann betrachten wir die Variable x, falls Sie ungleich 0 ist, so machen wir einen call der `x` multipliziert mit dem Ergebnis eines rekursives Aufrufs von `FAC` dessen Argument `(- x 1)` ist, also eines weniger als `x`, andernfalls geben wir 1 zurück, was auch die Rekursion stoppt. Um nun diese Funktion aufrufen zu können, packen wir Sie in einen Call mit dem Record als Callee und haben nun im (einzigen) Argument Zugriff darauf, wo wir FAC mit 4 ausführen. Alternativ kann man auch wie folgt vorgehen:
 ```lisp
 (({FAC=<x>(? x (* x (FAC (- x 1))) 1)} FAC) 4)
 ```
 In beiden Fällen lautet das Ergebnis 24.
+
+## testing
+
+Klarerweise wurde während der Implementation die ganze Zeit getestet. Folgende Tests haben sich als nützlich herausgestellt beim Einführen neuer Features während des Entwicklungsprozesses das Brechen älterer Features zu erkennen bzw. zu verhindern:
+
+```python
+assert parse("(+ 5 (* 3 9))").eval() == 32
+assert parse("(((+ 5 ((((* ((3)) 9)))))))").eval() == 32
+assert parse("(<x>(* 5 x) 3)").eval() == 15
+assert parse("(<y>(<x>(- y x)) 5 3)").eval() == 2
+assert parse("(<y>(((<x>(- y x)))) 3 5)").eval() == -2
+assert parse("((<y>(<x>(- y x)) 5) 3)").eval() == 2
+assert parse("((<y>(<x>(- y x)) 3) 5)").eval() == -2
+assert parse("({A = 5, B = <x>(+ A x)} (B 11))").eval() == 16
+assert parse("({A = 5, B = <x>(+ A x)} (B A))").eval() == 10
+assert parse("({FAC=<x>(? x (* x (FAC (- x 1))) 1)} (FAC 4))").eval() == 24
+assert parse("(({FAC=<x>(? x (* x (FAC (- x 1))) 1)} FAC) 4)").eval() == 24
+assert parse("({A=8, B={C=3}} (B C))").eval() == 3
+assert parse("(<x>(x A) {A=5})").eval() == 5
+```
